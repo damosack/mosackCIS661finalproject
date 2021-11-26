@@ -6,7 +6,7 @@ library(rgdal)
 library(dplyr)
 library(sf)
 library(maptools)
-
+library(SSDM)
 
 
 #create function to select relevant variables from datasets
@@ -119,7 +119,7 @@ raster::plot(crpdpred)
 quickplot <- function(tibble) {
   name <- tibble$common_name[1]
   
-plot(st_geometry(MI),
+plot(MI,
      xlim= c(min.lon, max.lon),
      ylim= c(min.lat, max.lat),
      axes= TRUE,
@@ -188,7 +188,7 @@ presenceplot <- function(unitibble, pred.presence.species) {
    name <- unitibble$common_name[1]
   
   #plot base map
-  raster::plot(st_geometry(MI),
+  raster::plot(MI,
        xlim= c(min.lon, max.lon),
        ylim= c(min.lat, max.lat),
        axes= TRUE,
@@ -260,7 +260,7 @@ presabsplot <- function(unitibble, fabstibble) {
   name <- c(unitibble$common_name[1], "presence and pseudo-absences points")
   
   #plot base map
-  raster::plot(st_geometry(MI),
+  raster::plot(MI,
                xlim= c(min.lon, max.lon),
                ylim= c(min.lat, max.lat),
                axes= TRUE,
@@ -291,6 +291,224 @@ presabsplot(unirehwoo, fabsrehwoo)
 presabsplot(uniwilfly, fabswilfly)
 presabsplot(uniwoothr, fabswoothr)
  
+#assign group 1 as testing data group (arbitrary)
+testing.group <- 1
+set.seed(2741)
+
+#create vector of group memberships
+#function to do this:
+groupPresence <- function(uniptibble) {
+  dismo::kfold(x= uniptibble, k=5)
+}
+#and now use function for all uniptibbles
+gpbrnthr <- groupPresence(unibrnthr)
+gpcanwar <- groupPresence(unicanwar)
+gpcomter <- groupPresence(unicomter)
+gpfiespa <- groupPresence(unifiespa)
+gpgraspa <- groupPresence(unigraspa)
+gpmarwre <- groupPresence(unimarwre)
+gpperfal <- groupPresence(uniperfal)
+gprehwoo <- groupPresence(unirehwoo)
+gpwilfly <- groupPresence(uniwilfly)
+gpwoothr <- groupPresence(uniwoothr)
+
+#checking output, head(gpbrnthr) should be c(3, 3, 5, 2, 5, 1)
+#table should show even split of observations
+head(gpbrnthr)
+table(gpbrnthr)
+
+#separate observations into training and testing groups
+ptrainbrnthr <- unipbrnthr[gpbrnthr != testing.group,]
+ptraincanwar <- unipcanwar[gpcanwar != testing.group,]
+ptraincomter <- unipcomter[gpcomter != testing.group,]
+ptrainfiespa <- unipfiespa[gpfiespa != testing.group,]
+ptraingraspa <- unipgraspa[gpgraspa != testing.group,]
+ptrainmarwre <- unipmarwre[gpmarwre != testing.group,]
+ptrainperfal <- unipperfal[gpperfal != testing.group,]
+ptrainrehwoo <- uniprehwoo[gprehwoo != testing.group,]
+ptrainwilfly <- unipwilfly[gpwilfly != testing.group,]
+ptrainwoothr <- unipwoothr[gpwoothr != testing.group,]
+
+ptestbrnthr <- unipbrnthr[gpbrnthr == testing.group, ]
+ptestcanwar <- unipcanwar[gpcanwar == testing.group, ]
+ptestcomter <- unipcomter[gpcomter == testing.group, ]
+ptestfiespa <- unipfiespa[gpfiespa == testing.group, ]
+ptestgraspa <- unipgraspa[gpgraspa == testing.group, ]
+ptestmarwre <- unipmarwre[gpmarwre == testing.group, ]
+ptestperfal <- unipperfal[gpperfal == testing.group, ]
+ptestrehwoo <- uniprehwoo[gprehwoo == testing.group, ]
+ptestwilfly <- unipwilfly[gpwilfly == testing.group, ]
+ptestwoothr <- unipwoothr[gpwoothr == testing.group, ]
+
+#separate background pseudo-absence data into train and test groups 
+gbbrnthr <- kfold(x= fabsbrnthr, k= 5)
+gbcanwar <- kfold(x= fabscanwar, k= 5)
+gbcomter <- kfold(x= fabscomter, k= 5)
+gbfiespa <- kfold(x= fabsfiespa, k= 5)
+gbgraspa <- kfold(x= fabsgraspa, k= 5)
+gbmarwre <- kfold(x= fabsmarwre, k= 5)
+gbperfal <- kfold(x= fabsperfal, k= 5)
+gbrehwoo <- kfold(x= fabsrehwoo, k= 5)
+gbwilfly <- kfold(x= fabswilfly, k= 5)
+gbwoothr <- kfold(x= fabswoothr, k= 5)
+
+btrainbrnthr <- fabsbrnthr[gbbrnthr != testing.group, ]
+btraincanwar <- fabscanwar[gbcanwar != testing.group, ]
+btraincomter <- fabscomter[gbcomter != testing.group, ]
+btrainfiespa <- fabsfiespa[gbfiespa != testing.group, ]
+btraingraspa <- fabsgraspa[gbgraspa != testing.group, ]
+btrainmarwre <- fabsmarwre[gbmarwre != testing.group, ]
+btrainperfal <- fabsperfal[gbperfal != testing.group, ]
+btrainrehwoo <- fabsrehwoo[gbrehwoo != testing.group, ]
+btrainwilfly <- fabswilfly[gbwilfly != testing.group, ]
+btrainwoothr <- fabswoothr[gbwoothr != testing.group, ]
+
+btestbrnthr <- fabsbrnthr[gbbrnthr == testing.group, ]
+btestcanwar <- fabscanwar[gbcanwar == testing.group, ]
+btestcomter <- fabscomter[gbcomter == testing.group, ]
+btestfiespa <- fabsfiespa[gbfiespa == testing.group, ]
+btestgraspa <- fabsgraspa[gbgraspa == testing.group, ]
+btestmarwre <- fabsmarwre[gbmarwre == testing.group, ]
+btestperfal <- fabsperfal[gbperfal == testing.group, ]
+btestrehwoo <- fabsrehwoo[gbrehwoo == testing.group, ]
+btestwilfly <- fabswilfly[gbwilfly == testing.group, ]
+btestwoothr <- fabswoothr[gbwoothr == testing.group, ]
+
+#create new models with training data only
+bc.model.brnthr <- bioclim(x= crpdpred, p=ptrainbrnthr)
+bc.model.canwar <- bioclim(x= crpdpred, p=ptraincanwar)
+bc.model.comter <- bioclim(x= crpdpred, p=ptraincomter)
+bc.model.fiespa <- bioclim(x= crpdpred, p=ptrainfiespa)
+bc.model.graspa <- bioclim(x= crpdpred, p=ptraingraspa)
+bc.model.marwre <- bioclim(x= crpdpred, p=ptrainmarwre)
+bc.model.perfal <- bioclim(x= crpdpred, p=ptrainperfal)
+bc.model.rehwoo <- bioclim(x= crpdpred, p=ptrainrehwoo)
+bc.model.wilfly <- bioclim(x= crpdpred, p=ptrainwilfly)
+bc.model.woothr <- bioclim(x= crpdpred, p=ptrainwoothr)
+
+#use models from training data to predict suitable habitat, similar as done above
+pred.presence.brnthr <- dismo::predict(object= bc.model.brnthr, x= crpdpred, ext= e)
+pred.presence.canwar <- dismo::predict(object= bc.model.canwar, x= crpdpred, ext= e)
+pred.presence.comter <- dismo::predict(object= bc.model.comter, x= crpdpred, ext= e)
+pred.presence.fiespa <- dismo::predict(object= bc.model.fiespa, x= crpdpred, ext= e)
+pred.presence.graspa <- dismo::predict(object= bc.model.graspa, x= crpdpred, ext= e)
+pred.presence.marwre <- dismo::predict(object= bc.model.marwre, x= crpdpred, ext= e)
+pred.presence.perfal <- dismo::predict(object= bc.model.perfal, x= crpdpred, ext= e)
+pred.presence.rehwoo <- dismo::predict(object= bc.model.rehwoo, x= crpdpred, ext= e)
+pred.presence.wilfly <- dismo::predict(object= bc.model.wilfly, x= crpdpred, ext= e)
+pred.presence.woothr <- dismo::predict(object= bc.model.woothr, x= crpdpred, ext= e)
+#use data set aside as test.data to evaluate model
+bc.eval.brnthr <- evaluate(p = ptestbrnthr, a = btestbrnthr, model = bc.model.brnthr, x = crpdpred)
+bc.eval.canwar <- evaluate(p = ptestcanwar, a = btestcanwar, model = bc.model.canwar, x = crpdpred)
+bc.eval.comter <- evaluate(p = ptestcomter, a = btestcomter, model = bc.model.comter, x = crpdpred)
+bc.eval.fiespa <- evaluate(p = ptestfiespa, a = btestfiespa, model = bc.model.fiespa, x = crpdpred)
+bc.eval.graspa <- evaluate(p = ptestgraspa, a = btestgraspa, model = bc.model.graspa, x = crpdpred)
+bc.eval.marwre <- evaluate(p = ptestmarwre, a = btestmarwre, model = bc.model.marwre, x = crpdpred)
+bc.eval.perfal <- evaluate(p = ptestperfal, a = btestperfal, model = bc.model.perfal, x = crpdpred)
+bc.eval.rehwoo <- evaluate(p = ptestrehwoo, a = btestrehwoo, model = bc.model.rehwoo, x = crpdpred)
+bc.eval.wilfly <- evaluate(p = ptestwilfly, a = btestwilfly, model = bc.model.wilfly, x = crpdpred)
+bc.eval.woothr <- evaluate(p = ptestwoothr, a = btestwoothr, model = bc.model.woothr, x = crpdpred)
+
+#Determine minimum threshold for "presence"
+#"spec_sens" sets the threshold at which the sum of the sensitivity (TPR)
+#and the specificity (TNR) is highest
+bc.thresh.brnthr <- threshold(x= bc.eval.brnthr, stat = "spec_sens")
+bc.thresh.canwar <- threshold(x= bc.eval.canwar, stat = "spec_sens")
+bc.thresh.comter <- threshold(x= bc.eval.comter, stat = "spec_sens")
+bc.thresh.fiespa <- threshold(x= bc.eval.fiespa, stat = "spec_sens")
+bc.thresh.graspa <- threshold(x= bc.eval.graspa, stat = "spec_sens")
+bc.thresh.marwre <- threshold(x= bc.eval.marwre, stat = "spec_sens")
+bc.thresh.perfal <- threshold(x= bc.eval.perfal, stat = "spec_sens")
+bc.thresh.rehwoo <- threshold(x= bc.eval.rehwoo, stat = "spec_sens")
+bc.thresh.wilfly <- threshold(x= bc.eval.wilfly, stat = "spec_sens")
+bc.thresh.woothr <- threshold(x= bc.eval.woothr, stat = "spec_sens")
+
+plot.thresh.pred <- function(unitibble, pred.presence, bc.thresh) {
+  #build custom title for each map
+  name <- c(unitibble$common_name[1],
+            "threshold predicted range",
+            "where model achieves max sum(TPR+TNR)")
+  
+  #plot base map
+  raster::plot(MI,
+               xlim= c(min.lon, max.lon),
+               ylim= c(min.lat, max.lat),
+               axes= TRUE,
+               col='grey95',
+               main = name)
+  #only plot areas where probability of occurrence
+  #is greater than the threshold.
+  raster::plot(pred.presence > bc.thresh,
+       add = TRUE,
+       legend= FALSE,
+       col= c(NA, "olivedrab"))
+  
+  #add original observations to map
+  points(x= unitibble$longitude,
+         y = unitibble$latitude,
+         col= "black",
+         pch= 20,
+         cex= 0.1)
+ 
+  raster::plot(MI,
+               add=TRUE,
+               boder="grey5")
+  box()
+}
+
+plot.thresh.pred(unibrnthr, pred.presence.brnthr, bc.thresh.brnthr)
+plot.thresh.pred(unicanwar, pred.presence.canwar, bc.thresh.canwar)
+plot.thresh.pred(unicomter, pred.presence.comter, bc.thresh.comter)
+plot.thresh.pred(unifiespa, pred.presence.fiespa, bc.thresh.fiespa)
+plot.thresh.pred(unigraspa, pred.presence.graspa, bc.thresh.graspa)
+plot.thresh.pred(unimarwre, pred.presence.marwre, bc.thresh.marwre)
+plot.thresh.pred(uniperfal, pred.presence.perfal, bc.thresh.perfal)
+plot.thresh.pred(unirehwoo, pred.presence.rehwoo, bc.thresh.rehwoo)
+plot.thresh.pred(uniwilfly, pred.presence.wilfly, bc.thresh.wilfly)
+plot.thresh.pred(uniwoothr, pred.presence.woothr, bc.thresh.woothr)
+
+#isolating the sdm layer so I can export plots as tiff
+#files which hopefully can be assembled into SSDMs
+SDMlayer <- function(pred.presence, bc.thresh){
+raster::plot(pred.presence > bc.thresh,
+             
+             legend= FALSE,
+            )
+}
+
+SDMlayer(pred.presence.brnthr, bc.thresh.brnthr)
+SDMlayer(pred.presence.canwar, bc.thresh.canwar)
+SDMlayer(pred.presence.comter, bc.thresh.comter)
+SDMlayer(pred.presence.fiespa, bc.thresh.fiespa)
+SDMlayer(pred.presence.graspa, bc.thresh.graspa)
+SDMlayer(pred.presence.marwre, bc.thresh.marwre)
+SDMlayer(pred.presence.perfal, bc.thresh.perfal)
+SDMlayer(pred.presence.rehwoo, bc.thresh.rehwoo)
+SDMlayer(pred.presence.wilfly, bc.thresh.wilfly)
+SDMlayer(pred.presence.woothr, bc.thresh.woothr)
+
+#created new folder "SDM_pred_ranges", containing
+#all SDM plots (range layer) as tiff files
+SDMfiles <- list.files(path= "SDM_pred_ranges",
+                       pattern= '.',
+                       full.names =  TRUE)
+SDMs <- stack(SDMfiles)
+SDMs
+SSDM <- stackApply(SDMs, indices = c(1,1,1,1,1,1,1,1,1,1), fun= sum)
+plot(SSDM)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
